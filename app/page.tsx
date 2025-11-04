@@ -7,12 +7,12 @@ import { BookOpen, ArrowRight, Star, TrendingUp } from 'lucide-react'
 import BookCover from '@/components/BookCover'
 
 async function getBooks() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/books`, {
-    cache: 'no-store'
-  })
-  
-  if (!res.ok) return []
-  return res.json()
+  const res = await fetch("/api/books", {
+    cache: "no-store",
+  });
+
+  if (!res.ok) return [];
+  return res.json();
 }
 
 export default async function Home() {
