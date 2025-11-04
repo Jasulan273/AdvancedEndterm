@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  email         String        @unique
+  name          String
+  password      String
+  createdAt     DateTime      @default(now())
+  interactions  Interaction[]
+}
+
+model Book {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  author        String
+  genre         String
+  price         Float
+  description   String
+  cover         String?
+  tags          String[]
+  isbn          String?       @unique
+  publishYear   Int?
+  createdAt     DateTime      @default(now())
+  interactions  Interaction[]
+  
+  @@index([genre])
+  @@index([author])
+  @@index([title])
+}
+
+model Interaction {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  bookId      String   @db.ObjectId
+  type        String
+  timestamp   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  book        Book     @relation(fields: [bookId], references: [id])
+  
+  @@index([userId])
+  @@index([bookId])
+  @@index([type])
+}
