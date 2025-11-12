@@ -164,7 +164,7 @@ export default function RegisterPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3 w-3 text-primary" />
-                  <span>AI-powered recommendations</span>
+                  <span>MongoDB-powered recommendations</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="h-3 w-3 text-primary" />

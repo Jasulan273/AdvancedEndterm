@@ -7,12 +7,12 @@ import { BookOpen, ArrowRight, Star, TrendingUp } from 'lucide-react'
 import BookCover from '@/components/BookCover'
 
 async function getBooks() {
-  const res = await fetch("/api/books", {
-    cache: "no-store",
-  });
-
-  if (!res.ok) return [];
-  return res.json();
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/books`, {
+    cache: 'no-store'
+  })
+  
+  if (!res.ok) return []
+  return res.json()
 }
 
 export default async function Home() {
@@ -37,7 +37,7 @@ export default async function Home() {
             </h1>
             
             <p className="max-w-[750px] text-lg text-muted-foreground sm:text-xl">
-              Explore thousands of books with personalized recommendations powered by AI. 
+              Explore thousands of books with personalized recommendations powered by MongoDB. 
               Find, read, and fall in love with stories that matter.
             </p>
             
@@ -132,7 +132,7 @@ export default async function Home() {
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-2">
                 <Star className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="font-semibold text-xl">AI Recommendations</h3>
+              <h3 className="font-semibold text-xl">MongoDB Recommendations</h3>
               <p className="text-muted-foreground text-sm">Personalized suggestions just for you</p>
             </div>
             

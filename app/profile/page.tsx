@@ -215,7 +215,7 @@ export default function ProfilePage() {
                 </div>
                 <Badge variant="secondary" className="gap-1">
                   <TrendingUp className="h-3 w-3" />
-                  AI Powered
+                  MongoDB Powered
                 </Badge>
               </div>
               <CardDescription>

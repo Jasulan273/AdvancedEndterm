@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
-import { ShoppingCart, Heart, Eye, Star, ArrowLeft, Loader2, Calendar, Hash } from 'lucide-react'
+import { ShoppingCart, Heart, Eye, Star, ArrowLeft, Loader2, Calendar, Hash, CheckCircle2 } from 'lucide-react'
 import BookCover from '@/components/BookCover'
+import { toast } from "sonner"
+
 interface Book {
   id: string
   title: string
@@ -22,6 +24,11 @@ interface Book {
   publishYear?: number
 }
 
+interface UserInteractions {
+  hasLiked: boolean
+  hasPurchased: boolean
+}
+
 export default function BookDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -30,6 +37,10 @@ export default function BookDetailPage() {
   const [loading, setLoading] = useState(true)
   const [interacting, setInteracting] = useState(false)
   const [viewLogged, setViewLogged] = useState(false)
+  const [userInteractions, setUserInteractions] = useState<UserInteractions>({
+    hasLiked: false,
+    hasPurchased: false
+  })
   const [likesCount, setLikesCount] = useState(0)
   const [purchasesCount, setPurchasesCount] = useState(0)
   const [viewsCount, setViewsCount] = useState(0)
@@ -37,7 +48,10 @@ export default function BookDetailPage() {
   useEffect(() => {
     fetchBook()
     fetchStats()
-  }, [params.id])
+    if (isAuthenticated) {
+      checkUserInteractions()
+    }
+  }, [params.id, isAuthenticated])
 
   const fetchBook = async () => {
     try {
@@ -66,9 +80,43 @@ export default function BookDetailPage() {
     }
   }
 
+  const checkUserInteractions = async () => {
+    try {
+      const res = await fetch(`/api/interactions/check/${params.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setUserInteractions(data)
+      }
+    } catch (err) {
+      console.error('Failed to check interactions:', err)
+    }
+  }
+
   const handleInteraction = async (type: 'view' | 'like' | 'purchase') => {
     if (!isAuthenticated) {
+      toast.error('Please login to continue', {
+        description: 'You need to be logged in to interact with books'
+      })
       router.push('/login')
+      return
+    }
+
+    // Проверка на повторные действия
+    if (type === 'like' && userInteractions.hasLiked) {
+      toast.info('Already liked', {
+        description: 'You have already liked this book'
+      })
+      return
+    }
+
+    if (type === 'purchase' && userInteractions.hasPurchased) {
+      toast.info('Already purchased', {
+        description: 'You have already purchased this book'
+      })
       return
     }
 
@@ -86,15 +134,43 @@ export default function BookDetailPage() {
         })
       })
 
-      if (res.ok) {
-        if (type === 'like') {
-          setLikesCount(prev => prev + 1)
-        } else if (type === 'purchase') {
-          setPurchasesCount(prev => prev + 1)
+      const data = await res.json()
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          // Конфликт - уже существует
+          toast.info('Already interacted', {
+            description: data.error
+          })
+        } else {
+          toast.error('Action failed', {
+            description: data.error || 'Something went wrong'
+          })
         }
+        return
+      }
+
+      // Успешно!
+      if (type === 'like') {
+        setLikesCount(prev => prev + 1)
+        setUserInteractions(prev => ({ ...prev, hasLiked: true }))
+        toast.success('Book liked! ❤️', {
+          description: `You liked "${book?.title}"`,
+          icon: <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+        })
+      } else if (type === 'purchase') {
+        setPurchasesCount(prev => prev + 1)
+        setUserInteractions(prev => ({ ...prev, hasPurchased: true }))
+        toast.success('Purchase successful! 🎉', {
+          description: `"${book?.title}" has been added to your library`,
+          icon: <CheckCircle2 className="h-4 w-4 text-green-500" />
+        })
       }
     } catch (err) {
       console.error('Interaction failed:', err)
+      toast.error('Something went wrong', {
+        description: 'Please try again later'
+      })
     } finally {
       setInteracting(false)
     }
@@ -156,22 +232,20 @@ export default function BookDetailPage() {
             transition={{ duration: 0.5 }}
           >
             <Card className="overflow-hidden sticky top-24">
-              <div className="relative aspect-2/3 overflow-hidden bg-muted">
-               <BookCover
-  title={book.title}
-  author={book.author}
-  isbn={book.isbn}
-  className="aspect-2/3 group-hover:scale-105 transition-transform duration-300"
-/>
-              </div>
+              <BookCover
+                title={book.title}
+                author={book.author}
+                isbn={book.isbn}
+                className="aspect-2/3"
+              />
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1 text-muted-foreground">
-                    <Heart className="h-4 w-4" />
+                    <Heart className={userInteractions.hasLiked ? "h-4 w-4 fill-red-500 text-red-500" : "h-4 w-4"} />
                     <span>{likesCount}</span>
                   </div>
                   <div className="flex items-center gap-1 text-muted-foreground">
-                    <ShoppingCart className="h-4 w-4" />
+                    <ShoppingCart className={userInteractions.hasPurchased ? "h-4 w-4 text-green-500" : "h-4 w-4"} />
                     <span>{purchasesCount}</span>
                   </div>
                   <div className="flex items-center gap-1 text-muted-foreground">
@@ -224,21 +298,30 @@ export default function BookDetailPage() {
                 <Button
                   size="lg"
                   onClick={() => handleInteraction('purchase')}
-                  disabled={interacting || !isAuthenticated}
+                  disabled={interacting || !isAuthenticated || userInteractions.hasPurchased}
                   className="flex-1 gap-2"
                 >
-                  <ShoppingCart className="h-4 w-4" />
-                  {isAuthenticated ? 'Purchase Now' : 'Login to Purchase'}
+                  {userInteractions.hasPurchased ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Purchased
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-4 w-4" />
+                      {isAuthenticated ? 'Purchase Now' : 'Login to Purchase'}
+                    </>
+                  )}
                 </Button>
                 <Button
                   size="lg"
-                  variant="outline"
+                  variant={userInteractions.hasLiked ? "default" : "outline"}
                   onClick={() => handleInteraction('like')}
-                  disabled={interacting || !isAuthenticated}
+                  disabled={interacting || !isAuthenticated || userInteractions.hasLiked}
                   className="gap-2"
                 >
-                  <Heart className="h-4 w-4" />
-                  Like
+                  <Heart className={userInteractions.hasLiked ? "h-4 w-4 fill-current" : "h-4 w-4"} />
+                  {userInteractions.hasLiked ? 'Liked' : 'Like'}
                 </Button>
               </div>
             </div>
